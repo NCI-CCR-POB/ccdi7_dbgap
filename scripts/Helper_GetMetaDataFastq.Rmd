@@ -1,0 +1,91 @@
+---
+title: '02'
+author: "KB"
+date: "2024-04-02"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(digest)
+```
+
+# Get meta data for the fastq files - location, size, md5
+
+## Settings
+```{r}
+# Example usage:
+#directory <- "../ccdi2_test2" #don't use ending slash
+#outFolder <- "../ccdi2_test2"
+#outFileName <- "metadata_test.tsv"
+
+directory <- "../ccdi2_clean" #don't use ending slash
+outFolder <- "../ccdi2_clean"
+outFileName <- "metadata_1.tsv"
+
+```
+
+## Get list of files and directories in current directory and sub-folders
+```{r}
+# Get list of files and directories in current directory and sub-folders
+files <- list.files(path = directory, full.names = TRUE, recursive = TRUE)
+
+```
+
+## Loop through each file and extract the meta data information
+```{r}
+finalDF={}
+iCount=1
+while(iCount <= length(files)) {
+  print(iCount)
+  oneFile=files[iCount]
+  print(oneFile)
+  
+  if(tools::file_ext(oneFile) == "gz") {
+    print("File is fastq")
+    
+    name <- basename(oneFile)
+    #print(name)
+    full_path <- oneFile
+    print(full_path)
+    tempid <- sub(directory, "", oneFile)
+    
+    #get clean id
+    id=gsub(pattern = "/", replacement = ".", tempid, fixed = TRUE )
+    id2=gsub(pattern = "01_DemultiplexedFastqs.", 
+             replacement = "", 
+             id,
+             fixed = TRUE)
+    
+    id3=stringr::str_sub(id2, 2, nchar(id2))
+    
+    #file_size <- file.size(oneFile)
+    file_size <- file.info(oneFile)$size
+    md5_checksum <- digest(oneFile, algo = "md5", file = TRUE)
+    
+    # Create temporary data frame
+    tempDF <- cbind(Name = name,
+                    Full_Path = full_path,
+                    ID = id3,
+                    File_Size = file_size,
+                    MD5_Checksum = md5_checksum)
+    
+    finalDF <- rbind(finalDF, tempDF)
+    print(dim(finalDF))
+    
+  } else {
+    print("File is not fastq, move on")
+  }
+  
+  iCount = iCount + 1
+}
+
+```
+## Export the meta data information
+```{r}
+outF = paste0(outFolder,"/", outFileName)
+write.table(x = finalDF, file = outF, 
+            sep = "\t", row.names = FALSE, quote = FALSE)
+```
